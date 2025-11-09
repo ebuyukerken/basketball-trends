@@ -1,0 +1,38 @@
+# --- Security ---
+# Ignore the GCP service account key
+gcp_service_account.json
+# Environment variables
+.env
+
+# --- Python ---
+# Virtual environments
+.venv/
+
+
+# Compiled Python files
+*.pyc
+__pycache__/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# --- IDEs / Editor Files ---
+# PyCharm
+.idea/
+
+# --- dbt ---
+# dbt artifacts
+dbt_project/logs/
+dbt_project/target/
+
+# dbt packages
+dbt_project/dbt_packages/
+
+# --- Airflow ---
+# Airflow logs 
+airflow_docker/logs/
+
+# --- Other ---
+.DS_Store
