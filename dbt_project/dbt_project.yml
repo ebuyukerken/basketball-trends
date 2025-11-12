@@ -1,0 +1,30 @@
+name: 'nba_reddit_project'
+version: '1.0.0'
+config-version: 2
+profile: 'nba-reddit-project'
+
+# File paths
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+analysis-paths: ["analyses"]
+macro-paths: ["macros"]
+target-path: "target"
+log-path: "logs"
+
+# What 'dbt clean' will remove
+clean-targets:
+  - "target"
+  - "logs"
+  - "dbt_packages"
+
+# Model configurations
+models:
+  # Apply to the whole project
+  nba_hype_project:
+    # All staging models
+    staging:
+      +materialized: view
+    # All marts models
+    marts:
+      +materialized: table

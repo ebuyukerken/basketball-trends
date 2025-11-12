@@ -23,9 +23,11 @@ dist/
 .idea/
 
 # --- dbt ---
+dbt_project/profiles.yml
 # dbt artifacts
 dbt_project/logs/
 dbt_project/target/
+dbt_project/.user.yml
 
 # dbt packages
 dbt_project/dbt_packages/
