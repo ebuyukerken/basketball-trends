@@ -24,7 +24,7 @@ models:
   nba_hype_project:
     # All staging models
     staging:
-      +materialized: view
+      +materialized: table
     # All marts models
     marts:
       +materialized: table

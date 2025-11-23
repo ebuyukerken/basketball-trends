@@ -1,0 +1,19 @@
+version: 2
+
+sources:
+  - name: raw
+    database: nba-reddit-project
+    schema: raw
+
+    tables:
+      - name: nba_game_logs
+        description: "Daily player game logs from nba-api."
+
+      - name: nba_player_list
+        description: "Master list of all players, past and present."
+
+      - name: reddit_nba_posts
+        description: "Posts from r/nba matching player keywords."
+
+      - name: nba_schedule
+        description: "Daily game schedule with start times in UTC."
