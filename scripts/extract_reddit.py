@@ -128,7 +128,7 @@ def fetch_reddit_posts(reddit_client: praw.Reddit, query_string: str) -> pd.Data
         for post in submissions:
             posts_data.append({
                 "post_id": post.id,
-                "subreddit": post.subreddit.display_name,  # <--- NEW FIELD ADDED HERE
+                "subreddit": post.subreddit.display_name,
                 "title": post.title,
                 "score": post.score,
                 "num_comments": post.num_comments,
