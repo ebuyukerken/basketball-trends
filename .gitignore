@@ -38,3 +38,4 @@ airflow_docker/logs/
 
 # --- Other ---
 .DS_Store
+notes_for_me.txt

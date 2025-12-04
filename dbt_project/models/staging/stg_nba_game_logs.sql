@@ -17,7 +17,7 @@ WITH source AS (
         *
     FROM {{ source('raw', 'nba_game_logs') }}
     {% if is_incremental() %}
-    WHERE CAST(GAME_DATE AS DATE) = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+    WHERE CAST(GAME_DATE AS DATE) >= '{{ var("run_dt") }}'
     {% endif %}
 ),
 

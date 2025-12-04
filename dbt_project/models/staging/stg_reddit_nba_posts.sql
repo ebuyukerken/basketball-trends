@@ -16,7 +16,7 @@ WITH source AS (
     SELECT * FROM {{ source('raw', 'reddit_nba_posts') }}
 
     {% if is_incremental() %}
-    WHERE DATE(created_utc) >= DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+    WHERE DATE(created_utc) >= '{{ var("run_dt") }}'
     {% endif %}
 ),
 

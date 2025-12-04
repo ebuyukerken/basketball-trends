@@ -3,6 +3,9 @@ version: '1.0.0'
 config-version: 2
 profile: 'nba-reddit-project'
 
+vars:
+  run_dt: '2025-01-01'
+
 # File paths
 model-paths: ["models"]
 seed-paths: ["seeds"]
