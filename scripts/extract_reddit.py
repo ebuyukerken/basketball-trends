@@ -1,5 +1,3 @@
-# File: scripts/extract_reddit.py
-
 import os
 import sys
 import praw
@@ -113,8 +111,9 @@ def fetch_reddit_posts(reddit_client: praw.Reddit, query_string: str) -> pd.Data
     """
     Makes a single, batched search query to r/nba.
     """
-    subreddit = reddit_client.subreddit("nba")
-    print(f"Searching 'r/nba' for 'new' posts in the last 'day'...")
+    subreddit_name = "nba"
+    subreddit = reddit_client.subreddit(subreddit_name)
+    print(f"Searching 'r/{subreddit_name}' for 'new' posts in the last 'day'...")
 
     # We make ONE search call, as requested by Reddit's API rules
     # time_filter='day' gets posts from the last 24 hours
@@ -129,6 +128,7 @@ def fetch_reddit_posts(reddit_client: praw.Reddit, query_string: str) -> pd.Data
         for post in submissions:
             posts_data.append({
                 "post_id": post.id,
+                "subreddit": post.subreddit.display_name,  # <--- NEW FIELD ADDED HERE
                 "title": post.title,
                 "score": post.score,
                 "num_comments": post.num_comments,
@@ -143,6 +143,7 @@ def fetch_reddit_posts(reddit_client: praw.Reddit, query_string: str) -> pd.Data
     except Exception as e:
         print(f"Error while fetching posts: {e}", file=sys.stderr)
         return pd.DataFrame()
+
 
 def batch_keywords(keywords: set, batch_size: int = 15):
     """Splits the set of keywords into smaller lists (batches)."""
@@ -211,13 +212,14 @@ def run_reddit_extraction():
         load_to_bigquery(
             all_posts_df,
             "raw.reddit_nba_posts",
-            write_mode="overwrite"
+            write_mode="overwrite" #change to append once the code is finalized
         )
     else:
         print("No posts found. Skipping BigQuery load.")
 
     end_time = time.time()
     print(f"\n--- Reddit Extraction Finished in {end_time - start_time:.2f} seconds ---")
+
 
 if __name__ == "__main__":
     run_reddit_extraction()
