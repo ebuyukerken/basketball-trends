@@ -46,98 +46,48 @@ def setup_reddit_client():
         sys.exit(1)
 
 
-def get_players_from_bq(yesterday_str: str) -> list:
+def fetch_latest_posts(reddit_client: praw.Reddit, lookback_hours: int = 48) -> pd.DataFrame:
     """
-    Queries BigQuery to get a list of players who played yesterday.
-    """
-    print(f"Querying BigQuery for players who played on {yesterday_str}...")
-    query = f"""
-        SELECT DISTINCT PLAYER_NAME 
-        FROM `{PROJECT_ID}.raw.nba_game_logs`
-        WHERE CAST(GAME_DATE AS DATE) = DATE('{yesterday_str}')
-    """
-    try:
-        query_job = BQ_CLIENT.query(query)
-        df = query_job.to_dataframe()
-        players = df['PLAYER_NAME'].dropna().tolist()
-        print(f"Found {len(players)} players from game logs.")
-        return players
-    except Exception as e:
-        print(f"Error querying BigQuery for players: {e}", file=sys.stderr)
-        return []
-
-
-def load_keywords_from_seed() -> list:
-    """
-    Loads the 'alias' column from the seed file.
-    """
-    PROJECT_ROOT = SCRIPT_DIR.parent
-    SEED_FILE_PATH = PROJECT_ROOT / "dbt_project" / "seeds" / "seed_player_aliases.csv"
-    try:
-        df = pd.read_csv(SEED_FILE_PATH)
-        aliases = df['alias'].dropna().unique().tolist()
-        print(f"Loaded {len(aliases)} unique aliases from seed file.")
-        return aliases
-    except FileNotFoundError:
-        print(f"Warning: Seed file not found at {SEED_FILE_PATH}. Proceeding without aliases.", file=sys.stderr)
-        return []
-
-
-def build_search_query(players: list, aliases: list) -> str:
-    """
-    Combines player names and aliases into a single,
-    robust OR-separated search query for Reddit.
-    """
-    all_keywords = set(players) | set(aliases)
-
-    # Escape double-quotes in names
-    # Wrap all multi-word phrases in quotes
-    safe_keywords = []
-    for kw in all_keywords:
-        if ' ' in kw:
-            # Wrap phrases in quotes
-            safe_keywords.append(f'"{kw.replace("\"", "")}"')  # Remove internal quotes
-        else:
-            # Single words are fine
-            safe_keywords.append(kw)
-
-    # PRAW's search uses Lucene syntax. "OR" is the operator.
-    query_string = " OR ".join(safe_keywords)
-    print(f"Built 1 batched search query with {len(all_keywords)} total keywords.")
-    return query_string
-
-
-def fetch_reddit_posts(reddit_client: praw.Reddit, query_string: str) -> pd.DataFrame:
-    """
-    Makes a single, batched search query to r/nba.
+    Fetches ALL posts from r/nba in the last X hours.
+    No keyword filtering - we capture everything and filter in DBT later.
     """
     subreddit_name = "nba"
     subreddit = reddit_client.subreddit(subreddit_name)
-    print(f"Searching 'r/{subreddit_name}' for 'new' posts in the last 'day'...")
+    print(f"Fetching all posts from 'r/{subreddit_name}' created in the last {lookback_hours} hours...")
 
-    # We make ONE search call, as requested by Reddit's API rules
-    # time_filter='day' gets posts from the last 24 hours
-    submissions = subreddit.search(
-        query=query_string,
-        sort="new",
-        time_filter="day"
-    )
+    # 1. Define cutoff (current time - 48 hours in seconds)
+    cutoff_time = time.time() - (lookback_hours * 60 * 60)
 
     posts_data = []
+
     try:
-        for post in submissions:
+        # .new(limit=None) iterates indefinitely until we break the loop
+        for post in subreddit.new(limit=None):
+
+            # 2. THE CRITICAL CHECK
+            # If we hit a post older than 48h, we stop.
+            if post.created_utc < cutoff_time:
+                print(f"Reached posts older than {lookback_hours} hours. Stopping fetch.")
+                break
+
+            # 3. Collect Data
             posts_data.append({
                 "post_id": post.id,
                 "subreddit": post.subreddit.display_name,
                 "title": post.title,
                 "score": post.score,
                 "num_comments": post.num_comments,
+                # Convert unix timestamp to datetime object
                 "created_utc": datetime.fromtimestamp(post.created_utc, tz=timezone.utc),
                 "url": post.url,
                 "selftext": post.selftext,
             })
 
-        print(f"Found {len(posts_data)} matching posts.")
+            # Optional: Print progress every 100 posts
+            if len(posts_data) % 100 == 0:
+                print(f"Collected {len(posts_data)} posts so far...")
+
+        print(f"Total matching posts found: {len(posts_data)}")
         return pd.DataFrame(posts_data)
 
     except Exception as e:
@@ -145,80 +95,35 @@ def fetch_reddit_posts(reddit_client: praw.Reddit, query_string: str) -> pd.Data
         return pd.DataFrame()
 
 
-def batch_keywords(keywords: set, batch_size: int = 15):
-    """Splits the set of keywords into smaller lists (batches)."""
-    keyword_list = list(keywords)
-    for i in range(0, len(keyword_list), batch_size):
-        yield keyword_list[i:i + batch_size]
-
-
 def run_reddit_extraction():
-    """Main ETL function, now with batching."""
-    print("--- Starting Reddit Hype Extraction ---")
+    """Main ETL function."""
+    print("--- Starting Reddit Raw Ingestion ---")
     start_time = time.time()
-
-    # 0. Get yesterday's date string
-    yesterday = datetime.now(timezone.utc) - timedelta(days=1)
-    yesterday_str = yesterday.strftime("%Y-%m-%d")
 
     # 1. Setup Reddit client
     reddit_client = setup_reddit_client()
 
-    # 2. Get dynamic player list from BQ
-    players_list = get_players_from_bq(yesterday_str)
+    # 2. Fetch ALL posts (Last 48 hours)
+    # We do NOT filter by player here. We want completeness.
+    # DBT will handle the matching logic.
+    all_posts_df = fetch_latest_posts(reddit_client, lookback_hours=48)
 
-    # 3. Load static alias list
-    alias_list = load_keywords_from_seed()
-
-    if not players_list and not alias_list:
-        print("No players or aliases found. Nothing to search. Exiting.")
-        return
-
-    # 4. Combine all keywords into one set
-    all_keywords = set(players_list) | set(alias_list)
-    print(f"Total unique keywords to process: {len(all_keywords)}")
-
-    # 5. Fetch posts IN BATCHES
-    all_posts_df = pd.DataFrame()
-
-    for i, keyword_batch in enumerate(batch_keywords(all_keywords, batch_size=15)):
-
-        # A) Build a smaller query for just this batch
-        # (We pass an empty list [] for aliases since we're already batched)
-        batch_query_string = build_search_query(keyword_batch, [])
-
-        print(f"\n--- Batch {i + 1}: Fetching {len(keyword_batch)} keywords ---")
-        # print(batch_query_string) # Optional: print each query
-
-        # B) Fetch posts for this small batch
-        posts_df = fetch_reddit_posts(reddit_client, batch_query_string)
-
-        # C) Add to our master list
-        if not posts_df.empty:
-            all_posts_df = pd.concat([all_posts_df, posts_df], ignore_index=True)
-
-        # D) Be polite to the API. 1 second is fine.
-        time.sleep(1)
-
-        # 6. De-duplicate (since one post might match multiple batches)
-    if not all_posts_df.empty:
-        print(f"\nFound {len(all_posts_df)} total posts before deduplication.")
-        all_posts_df = all_posts_df.drop_duplicates(subset=['post_id'])
-        print(f"Found {len(all_posts_df)} unique posts after deduplication.")
-
-    # 7. Add load timestamp and load to BQ
+    # 3. Add load timestamp and load to BQ
     if not all_posts_df.empty:
         all_posts_df["_loaded_at_utc"] = datetime.now(timezone.utc)
+
+        print(f"Uploading {len(all_posts_df)} rows to BigQuery...")
+
         load_to_bigquery(
             all_posts_df,
             "raw.reddit_nba_posts",
-            write_mode="overwrite" #change to append once the code is finalized
+            write_mode="append"
         )
     else:
-        print("No posts found. Skipping BigQuery load.")
+        print("No posts found in the time window. Skipping BigQuery load.")
 
     end_time = time.time()
-    print(f"\n--- Reddit Extraction Finished in {end_time - start_time:.2f} seconds ---")
+    print(f"\n--- Reddit Ingestion Finished in {end_time - start_time:.2f} seconds ---")
 
 
 if __name__ == "__main__":

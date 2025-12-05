@@ -12,6 +12,17 @@
     )
 }}
 
+/*
+merge instead of insert_overwrite.
+insert_overwrite fails in some cases. example:
+lebron played on Dec 5. there are posts from Dec 5 and Dec 6.
+run_dt: Dec 5. lebron played, exists in the player list. posts are matched.
+run_dt: Dec 6. lebron didn't play. does not exist in the player list.
+posts on 6th are not matched with lebron.
+6th is overwritten (insert overwrite). lebron posts on 6th are missed.
+merge does not overwrite in this case.
+*/
+
 WITH
 -- unique player list
 player_list AS (

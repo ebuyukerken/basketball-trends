@@ -16,7 +16,11 @@ WITH source AS (
     SELECT * FROM {{ source('raw', 'reddit_nba_posts') }}
 
     {% if is_incremental() %}
-    WHERE DATE(created_utc) >= '{{ var("run_dt") }}'
+    --ingestion: posts from the last 48h. dbt run in every 24h. DATE_SUB to get the most current post stats (upvotes, comments)
+    --otherwise immature posts will be misleading. e.g. the post shared just a few minutes before the ingestion.
+    --so the same posts will be fetched again 24 hours later. upvotes and comments will be updated.
+    --deduplication in the final part
+    WHERE DATE(created_utc) >= DATE_SUB('{{ var("run_dt") }}', INTERVAL 1 DAY)
     {% endif %}
 ),
 
