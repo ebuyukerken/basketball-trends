@@ -1,5 +1,6 @@
 {{
     config(
+        enabled=false,
         materialized='incremental',
         unique_key='game_id',
         incremental_strategy='merge'
