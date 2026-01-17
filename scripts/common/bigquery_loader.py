@@ -12,11 +12,16 @@ from pathlib import Path
 # 1. Set the path to the Service Account JSON file
 # 'gcp_service_account.json' file is in the PROJECT ROOT, one level above the 'scripts' directory.
 try:
-    # Get the directory of the current script (scripts/common)
-    CURRENT_DIR = Path(__file__).resolve().parent
-    # Go up two levels to get the project root (basketball-trends/)
-    PROJECT_ROOT = CURRENT_DIR.parent.parent
-    KEY_PATH = PROJECT_ROOT / "gcp_service_account.json"
+    env_key_path = os.getenv('GCP_KEY_PATH')
+
+    if env_key_path:
+        # We are likely in Docker or have set the var explicitly
+        KEY_PATH = Path(env_key_path)
+    else:
+        # Fallback: We are running locally (no env var set)
+        CURRENT_DIR = Path(__file__).resolve().parent
+        PROJECT_ROOT = CURRENT_DIR.parent.parent
+        KEY_PATH = PROJECT_ROOT / "gcp_service_account.json"
 
     # 2. Authenticate
     # Check if the key file exists

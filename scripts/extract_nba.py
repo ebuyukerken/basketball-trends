@@ -127,9 +127,6 @@ def fetch_all_players(timeout_val=60):
 def run_nba_extraction(date_str=None, season_str=None):
     """
     Main extraction function.
-    - If 'season_str' is given, fetches the full season.
-    - If 'date_str' is given, fetches that specific date.
-    - If neither is given, fetches yesterday's data (default daily run).
     """
     start_time = time.time()
 
@@ -137,13 +134,24 @@ def run_nba_extraction(date_str=None, season_str=None):
     if season_str:
         print(f"--- Starting NBA Backfill for Season: {season_str} ---")
         gamelogs_df = fetch_player_gamelogs(season=season_str)
-        # For a full season backfill, we *must* overwrite the table
         gamelog_load_mode = "overwrite"
 
     elif date_str:
         print(f"--- Starting NBA Rerun for Date: {date_str} ---")
-        gamelogs_df = fetch_player_gamelogs(date_from=date_str, date_to=date_str)
-        # For a single-date rerun, we append. Our dbt model will handle duplicates.
+
+        # --- FIX START ---
+        # Convert the date string to a datetime object to calculate the season
+        date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+        calculated_season = get_season_str(date_obj)
+
+        # Pass the calculated season to the fetch function
+        gamelogs_df = fetch_player_gamelogs(
+            date_from=date_str,
+            date_to=date_str,
+            season=calculated_season
+        )
+        # --- FIX END ---
+
         gamelog_load_mode = "append"
 
     else:
