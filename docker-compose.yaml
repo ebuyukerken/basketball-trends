@@ -1,0 +1,88 @@
+version: '3.8'
+services:
+  # --- 1. The Helper: Initializes the DB ---
+  airflow-init:
+    build: .
+    env_file: .env
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=${AIRFLOW_CONN_STRING}
+      - AIRFLOW__CORE__LOAD_EXAMPLES=false
+    depends_on:
+      - postgres
+    command: >
+      bash -c "airflow db migrate &&
+      airflow users create 
+      --username ${AIRFLOW_ADMIN_USER} 
+      --password ${AIRFLOW_ADMIN_PASSWORD} 
+      --firstname Airflow 
+      --lastname Admin 
+      --role Admin 
+      --email ${AIRFLOW_ADMIN_EMAIL}"
+  # --- 2. The Webserver ---
+  airflow-webserver:
+    build: .
+    command: webserver
+    ports:
+      - "8080:8080"
+    env_file: .env
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=${AIRFLOW_CONN_STRING}
+      - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=true
+      - AIRFLOW__CORE__LOAD_EXAMPLES=false
+      - DBT_PROFILES_DIR=/opt/airflow/dbt_project
+      - GOOGLE_APPLICATION_CREDENTIALS=/opt/airflow/secrets/gcp_service_account.json
+      # IMPORTANT: Must match the path inside the container
+      - GCP_KEY_PATH=/opt/airflow/secrets/gcp_service_account.json
+      - AIRFLOW__WEBSERVER__WORKERS=1
+      - AIRFLOW__WEBSERVER__WORKER_TIMEOUT=300
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./scripts:/opt/airflow/scripts
+      - ./dbt_project:/opt/airflow/dbt_project
+      - ./logs:/opt/airflow/logs
+      - ./gcp_service_account.json:/opt/airflow/secrets/gcp_service_account.json
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # --- 3. The Scheduler ---
+  airflow-scheduler:
+    build: .
+    command: scheduler
+    env_file: .env
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+      - AIRFLOW__CORE__LOAD_EXAMPLES=false
+      - DBT_PROFILES_DIR=/opt/airflow/dbt_project
+      - GOOGLE_APPLICATION_CREDENTIALS=/opt/airflow/secrets/gcp_service_account.json
+      - GCP_KEY_PATH=/opt/airflow/secrets/gcp_service_account.json
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./scripts:/opt/airflow/scripts
+      - ./dbt_project:/opt/airflow/dbt_project
+      - ./logs:/opt/airflow/logs
+      - ./gcp_service_account.json:/opt/airflow/secrets/gcp_service_account.json
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+  # --- 4. The Database ---
+  postgres:
+    image: postgres:13
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    volumes:
+      - postgres-db-volume:/var/lib/postgresql/data
+
+volumes:
+  postgres-db-volume:
