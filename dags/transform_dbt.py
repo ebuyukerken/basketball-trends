@@ -45,10 +45,7 @@ with DAG(
     # 3. Run dbt
     dbt_run = BashOperator(
         task_id='dbt_run',
-        bash_command="""
-            cd /opt/airflow/dbt_project && \
-            dbt run --vars '{"run_dt": "{{ ds }}"}'
-        """
+        bash_command='cd /opt/airflow/dbt_project && dbt run --profiles-dir . --vars \'{"run_dt": "{{ ds }}"}\''
     )
 
     [wait_for_nba, wait_for_reddit] >> dbt_run
