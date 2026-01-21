@@ -46,10 +46,31 @@ def get_nba_static_schedule(target_date=None, target_season=None):
     print(f"Parsing schedule (Target Date: {target_date if target_date else 'Season ' + str(target_season)})...")
 
     for day_data in league_schedule:
+        # 'gameDate' field in JSON can vary (e.g., "01/20/2026 00:00:00" or "2026-01-20 00:00:00")
         raw_date = day_data['gameDate']
-        current_date_str = raw_date.split(' ')[0]  # Extract YYYY-MM-DD
+
+        # --- Date Normalization Logic ---
+        try:
+            # Extract the date part (ignore time)
+            date_part = raw_date.split(' ')[0]
+
+            # Normalize to YYYY-MM-DD
+            if '/' in date_part:
+                # Format: MM/DD/YYYY (Common in NBA CDN)
+                dt_obj = datetime.strptime(date_part, '%m/%d/%Y')
+            else:
+                # Format: YYYY-MM-DD (ISO format)
+                dt_obj = datetime.strptime(date_part, '%Y-%m-%d')
+
+            current_date_str = dt_obj.strftime('%Y-%m-%d')
+
+        except ValueError as e:
+            print(f"Warning: Could not parse date '{raw_date}'. Error: {e}")
+            continue
+        # --------------------------------
 
         # FILTER: Strict date filtering
+        # Now we compare normalized 'current_date_str' with the 'target_date' input
         if target_date and current_date_str != target_date:
             continue
 
@@ -75,7 +96,7 @@ def get_nba_static_schedule(target_date=None, target_season=None):
                 game_record = {
                     "game_id": game['gameId'],
                     "season_id": game.get('seasonId', ''),
-                    "game_date": current_date_str,  # String: "YYYY-MM-DD"
+                    "game_date": current_date_str,  # Standardized String: "YYYY-MM-DD"
                     "home_team": game['homeTeam']['teamName'],
                     "home_team_id": game['homeTeam']['teamId'],
                     "visitor_team": game['awayTeam']['teamName'],
@@ -94,18 +115,13 @@ def get_nba_static_schedule(target_date=None, target_season=None):
 
     df = pd.DataFrame(processed_games)
 
-    # --- TYPE CONVERSION START ---
+    # --- TYPE CONVERSION ---
     if not df.empty:
         # Convert 'utc_start_time' string to datetime objects (UTC aware)
-        # errors='coerce' turns invalid parsing into NaT (Not a Time)
         df['utc_start_time'] = pd.to_datetime(df['utc_start_time'], utc=True, errors='coerce')
 
         # Convert 'game_date' string to datetime objects
         df['game_date'] = pd.to_datetime(df['game_date'], errors='coerce')
-
-        # Optional: If you strictly want a python .date() object (no time component) for game_date:
-        # df['game_date'] = df['game_date'].dt.date
-    # --- TYPE CONVERSION END ---
 
     print(f"Processed {len(df)} games.")
 
@@ -142,8 +158,6 @@ def run_schedule_extraction(date_str=None, season_str=None):
 
         print(f"Loading {len(schedule_df)} schedule records to '{bq_table_name}' (Mode: {load_mode})")
 
-        # Note: Ensure your BigQuery loader can handle datetime objects.
-        # Most modern loaders (pandas-gbq) map these to TIMESTAMP or DATE types automatically.
         load_to_bigquery(
             schedule_df,
             bq_table_name,
