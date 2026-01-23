@@ -30,6 +30,7 @@ with DAG(
         check_existence=True,
         mode='reschedule',
         timeout=3600,
+        execution_delta=timedelta(minutes=30)
     )
 
     # 2. Wait for NBA Schedule Ingestion (NEW)
@@ -40,6 +41,7 @@ with DAG(
         check_existence=True,
         mode='reschedule',
         timeout=3600,
+        execution_delta=timedelta(minutes=30)
     )
 
     # 3. Wait for Reddit Ingestion
@@ -50,6 +52,7 @@ with DAG(
         check_existence=True,
         mode='reschedule',
         timeout=3600,
+        execution_delta=timedelta(minutes=30)
     )
 
     # 4. Run dbt
