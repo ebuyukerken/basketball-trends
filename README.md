@@ -19,7 +19,7 @@ An end-to-end ELT pipeline that ingests Reddit NBA posts, matches text to NBA pl
 **Ingestion:** Python, PRAW, nba_api,Pandas  
 **Warehouse:** Google BigQuery  
 **Transformation:** dbt  
-**Orchestration:** Local scripts (→ migrating to Airflow)  
+**Orchestration:** Airflow
 **Visualization:** Looker Studio (planned)
 
 ---
@@ -65,10 +65,6 @@ For this specific model, we use **merge** instead of `insert_overwrite`.
 
 ---
 
-## 🔮 Roadmap
-
-- Migrate workflow orchestration to Apache Airflow  
-- Build Looker Studio dashboards for “Hype vs. Performance” visualizations  
-- Ingest Reddit comment bodies and apply sentiment analysis (NLTK/TextBlob)
-
+## Roadmap
+- Build Looker Studio dashboards for “Hype vs. Performance” visualizations
 ---
