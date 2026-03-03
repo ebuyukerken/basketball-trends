@@ -56,7 +56,7 @@ WITH game_stats AS (
     FROM {{ ref('stg_nba_game_logs') }} AS gl
     LEFT JOIN {{ ref('stg_nba_schedule') }} AS ns
         ON gl.game_id = ns.game_id
-    WHERE gl.game_date >= '2025-09-01'
+    WHERE gl.game_date >= '2026-01-09'
 ),
 
 reddit_stats AS (
@@ -69,7 +69,7 @@ reddit_stats AS (
         SUM(num_comments) AS total_comments,
         SUM(score) AS total_score
     FROM {{ ref('int_reddit_player_mentions') }}
-    WHERE created_date >= '2026-01-01'
+    WHERE created_date >= '2026-01-10'
     GROUP BY 1, 2, 3, 4
 )
 
