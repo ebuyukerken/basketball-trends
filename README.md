@@ -19,8 +19,7 @@ An end-to-end ELT pipeline that ingests Reddit NBA posts, matches text to NBA pl
 **Ingestion:** Python, PRAW, nba_api,Pandas  
 **Warehouse:** Google BigQuery  
 **Transformation:** dbt  
-**Orchestration:** Airflow
-**Visualization:** Looker Studio (planned)
+**Orchestration:** Airflow (Deployed on GCP VM instance - e2-standard-2)
 
 ---
 
@@ -65,6 +64,12 @@ For this specific model, we use **merge** instead of `insert_overwrite`.
 
 ---
 
-## Roadmap
-- Build Looker Studio dashboards for “Hype vs. Performance” visualizations
+## Roadmap and Notes
+This is a portfolio project developed using GCP free trial. As my free trial is expiring, I have shut down the project and exported the final data (i.e., BQ tables) locally. Further analysis is planned to be conducted on a separate repo using the downloaded data, which consists of 2 months of game logs and reddit activity.
+
 ---
+## Screenshots
+![airflow_dags.jpeg](images/airflow_dags.jpeg)
+![airflow_game_logs.jpeg](images/airflow_game_logs.jpeg)
+![airflow_reddit.jpeg](images/airflow_reddit.jpeg)
+![gcp_vm.jpeg](images/gcp_vm.jpeg)
