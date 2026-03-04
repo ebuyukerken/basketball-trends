@@ -65,7 +65,7 @@ For this specific model, we use **merge** instead of `insert_overwrite`.
 ---
 
 ## Roadmap and Notes
-This is a portfolio project developed using GCP free trial. As my free trial is expiring, I have shut down the project and exported the final data (i.e., BQ tables) locally. Further analysis is planned to be conducted on a separate repo using the downloaded data, which consists of 2 months of game logs and reddit activity.
+This is a portfolio project developed using GCP free trial. As my free trial is expiring, I have shut down the project and exported the final data (i.e., BQ tables) locally (available in the data/ directory). Further analysis is planned to be conducted on a separate repo using the downloaded data, which consists of 2 months of game logs and reddit activity.
 
 ---
 ## Screenshots

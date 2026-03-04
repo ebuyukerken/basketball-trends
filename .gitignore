@@ -40,4 +40,3 @@ airflow_docker/logs/
 .DS_Store
 notes_for_me.txt
 logs/
-data/
